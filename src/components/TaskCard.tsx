@@ -175,31 +175,52 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onAddToDate
 
   return (
     <motion.div layout initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
-      <Card variant="outlined" sx={{ mb: 1 }}>
-        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Tooltip title={isLocked ? `Locked until ${task.availableAt ? new Date(task.availableAt).toLocaleString() : 'when dependency completes'}` : ''}>
-            <span>
-              <Checkbox checked={task.completed} onChange={() => onToggle(task.id)} disabled={isLocked} />
-            </span>
-          </Tooltip>
-          <div style={{ flex: 1 }}>
-            <Typography variant="subtitle1" sx={{ textDecoration: task.completed ? 'line-through' : 'none' }}>
-              {task.title}
-            </Typography>
-            {task.description ? (
-              <Typography variant="body2" color="text.secondary">
-                {task.description}
+      <motion.div whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}>
+        <Card
+          variant="outlined"
+          sx={{
+            mb: 1,
+            borderRadius: 12,
+            bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(30,34,40,0.45)' : 'rgba(255,255,255,0.6)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(255,255,255,0.06)'
+          }}
+          role="article"
+          aria-labelledby={`task-${task.id}-title`}
+        >
+          <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Tooltip title={isLocked ? `Locked until ${task.availableAt ? new Date(task.availableAt).toLocaleString() : 'when dependency completes'}` : ''}>
+              <span>
+                <Checkbox
+                  checked={task.completed}
+                  onChange={() => onToggle(task.id)}
+                  disabled={isLocked}
+                  inputProps={{ 'aria-label': task.completed ? `Mark ${task.title} incomplete` : `Mark ${task.title} complete` }}
+                />
+              </span>
+            </Tooltip>
+            <div style={{ flex: 1 }}>
+              <Typography id={`task-${task.id}-title`} variant="subtitle1" sx={{ textDecoration: task.completed ? 'line-through' : 'none', fontWeight: 600 }}>
+                {task.title}
               </Typography>
+              {task.description ? (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {task.description}
+                </Typography>
+              ) : null}
+            </div>
+            {onAddToDate ? (
+              <Tooltip title="Add to today">
+                <IconButton size="small" color="primary" onClick={() => onAddToDate(task.id)} aria-label={`Add ${task.title} to today`}>
+                  <AddTaskIcon />
+                </IconButton>
+              </Tooltip>
             ) : null}
-          </div>
-          {onAddToDate ? (
-            <IconButton size="small" color="primary" onClick={() => onAddToDate(task.id)} title="Add to today">
-              <AddTaskIcon />
-            </IconButton>
-          ) : null}
-          <IconButton size="small" onClick={openRemDialog} title={task.reminderAt ? `Reminder set ${new Date(task.reminderAt).toLocaleString()}` : 'Set reminder'}>
-            <AccessTimeIcon fontSize="small" />
-          </IconButton>
+            <Tooltip title={task.reminderAt ? `Reminder set ${new Date(task.reminderAt).toLocaleString()}` : 'Set reminder'}>
+              <IconButton size="small" onClick={openRemDialog} aria-label={`Set reminder for ${task.title}`}>
+                <AccessTimeIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           {/* Dependency: if this task is a dependent (has dependsOn), allow clearing it; otherwise allow creating dependents */}
           {!task.dependsOn ? (
             <IconButton size="small" onClick={openDepDialog} title="Create dependent task">
@@ -270,8 +291,8 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onAddToDate
 
         {/* Inline dependents list (show immediate dependent tasks under this parent) */}
         {dependents.length > 0 ? (
-          <CardContent sx={{ pt: 0, bgcolor: 'background.paper' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+          <CardContent sx={{ pt: 0, bgcolor: 'transparent' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, ml: 1 }}>
               Dependent tasks
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -286,13 +307,18 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onAddToDate
                   return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`
                 }
                 return (
-                  <Box key={d.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 2, borderLeft: 2, borderColor: 'divider' }}>
-                    <Checkbox size="small" checked={d.completed} onChange={() => {
-                      // prevent toggling when parent is incomplete or dependent is locked by timer
-                      if (locked || !task.completed) return
-                      if (onToggle) onToggle(d.id)
-                      else dispatch(toggleComplete(d.id))
-                    }} disabled={locked || !task.completed} />
+                  <Box key={d.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 2, borderLeft: 2, borderColor: 'divider', py: 0.5 }}>
+                    <Checkbox
+                      size="small"
+                      checked={d.completed}
+                      onChange={() => {
+                        if (locked || !task.completed) return
+                        if (onToggle) onToggle(d.id)
+                        else dispatch(toggleComplete(d.id))
+                      }}
+                      disabled={locked || !task.completed}
+                      inputProps={{ 'aria-label': `Toggle dependent ${d.title}` }}
+                    />
                     <div style={{ flex: 1 }}>
                       <Typography variant="body2" sx={{ textDecoration: d.completed ? 'line-through' : 'none' }}>{d.title}</Typography>
                       {d.description ? <Typography variant="caption" color="text.secondary">{d.description}</Typography> : null}
@@ -300,10 +326,10 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onAddToDate
                     {locked && remainingSecs !== null ? (
                       <Typography variant="caption" color="text.secondary">{fmt(remainingSecs)}</Typography>
                     ) : null}
-                    <IconButton size="small" onClick={() => onEdit(d.id)}>
+                    <IconButton size="small" onClick={() => onEdit(d.id)} aria-label={`Edit ${d.title}`}>
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => onDelete(d.id)}>
+                    <IconButton size="small" onClick={() => onDelete(d.id)} aria-label={`Delete ${d.title}`}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
@@ -345,6 +371,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onAddToDate
           ) : null}
         </CardContent>
       </Card>
+      </motion.div>
     </motion.div>
   )
 }
