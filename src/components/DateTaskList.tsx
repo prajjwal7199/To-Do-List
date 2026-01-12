@@ -11,7 +11,8 @@ import { parseISO, format as fmt, isToday, isTomorrow } from 'date-fns'
 type Props = { date: string }
 
 export default function DateTaskList({ date }: Props) {
-  const tasks = useSelector((s: any) => (s.tasks?.items ?? []) as Task[])
+  const rawTasks = useSelector((s: any) => s.tasks?.items ?? []) as unknown
+  const tasks: Task[] = Array.isArray(rawTasks) ? (rawTasks as Task[]) : Object.values(rawTasks as Record<string, Task>)
   const dispatch = useDispatch()
 
   // include tasks for the selected date and all future dates

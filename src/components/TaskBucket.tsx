@@ -9,7 +9,8 @@ import TaskList from './TaskList'
 import { addTask, deleteTask, toggleComplete, editTask, addSubtask, toggleSubtask, deleteSubtask, editSubtask } from '../redux/slices/tasksSlice'
 
 export default function TaskBucket() {
-  const tasks = useSelector((s: any) => s.tasks.items as any[])
+  const rawTasks = useSelector((s: any) => s.tasks?.items ?? []) as unknown
+  const tasks: any[] = Array.isArray(rawTasks) ? (rawTasks as any[]) : Object.values(rawTasks as Record<string, any>)
   const dispatch = useDispatch()
   const unassigned = tasks.filter((t) => !t.date && !t.backlog)
 

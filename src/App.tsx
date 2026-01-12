@@ -30,7 +30,8 @@ export default function App() {
   const onToggleTheme = () => setDark((d) => !d)
 
   // Rollover: if there are no tasks for today, copy bucket tasks into today's date once on load.
-  const tasks = useSelector((s: any) => s.tasks.items as any[])
+  const rawTasks = useSelector((s: any) => s.tasks?.items ?? []) as unknown
+  const tasks: any[] = Array.isArray(rawTasks) ? (rawTasks as any[]) : Object.values(rawTasks as Record<string, any>)
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u))
     return () => unsub()

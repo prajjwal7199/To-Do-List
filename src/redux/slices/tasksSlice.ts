@@ -8,8 +8,28 @@ const tasksSlice = createSlice({
   initialState,
   reducers: {
     // Replace all tasks (used when loading from Firestore)
-    setAll(state, action: PayloadAction<Task[]>) {
-      state.items = action.payload || []
+    // Coerce incoming payload into an array to guard against remote data
+    // being an object keyed by id (older formats or accidental writes).
+    setAll(state, action: PayloadAction<any>) {
+      const payload = action.payload
+      if (!payload) {
+        state.items = []
+        return
+      }
+      if (Array.isArray(payload)) {
+        state.items = payload
+        return
+      }
+      if (Array.isArray(payload.items)) {
+        state.items = payload.items
+        return
+      }
+      // fallback: treat as object map and use values
+      try {
+        state.items = Object.values(payload) as Task[]
+      } catch (e) {
+        state.items = []
+      }
     },
     addTask: {
       reducer(state, action: PayloadAction<Task>) {

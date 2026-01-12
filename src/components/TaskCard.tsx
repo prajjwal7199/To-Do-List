@@ -102,7 +102,8 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onAddToDate
   const [remaining, setRemaining] = React.useState<number | null>(null)
 
   // get all tasks to find dependents (tasks that depend on this task)
-  const allTasks = useSelector((s: any) => s.tasks.items as Task[])
+  const rawAllTasks = useSelector((s: any) => s.tasks?.items ?? []) as unknown
+  const allTasks: Task[] = Array.isArray(rawAllTasks) ? (rawAllTasks as Task[]) : Object.values(rawAllTasks as Record<string, Task>)
   const dependents = React.useMemo(() => allTasks.filter((x) => x.dependsOn && x.dependsOn.taskId === task.id), [allTasks, task.id])
 
   // tick to refresh dependent countdowns every second when needed

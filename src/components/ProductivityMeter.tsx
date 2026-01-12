@@ -6,7 +6,8 @@ import { RootState } from '../redux/store'
 type Props = { date?: string }
 
 export default function ProductivityMeter({ date }: Props) {
-  const tasks = useSelector((s: RootState) => s.tasks.items)
+  const rawTasks = useSelector((s: any) => s.tasks?.items ?? []) as unknown
+  const tasks = Array.isArray(rawTasks) ? (rawTasks as any[]) : Object.values(rawTasks as Record<string, any>)
   const settings = useSelector((s: RootState) => s.productivity)
 
   const { completed, total, pct } = useMemo(() => {

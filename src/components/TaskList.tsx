@@ -17,9 +17,9 @@ type Props = {
 export default function TaskList({ tasks, onDelete, onEdit, onToggle, onAddToDate, onAddSubtask, onToggleSubtask, onDeleteSubtask, onEditSubtask }: Props) {
   return (
     <div>
-      {tasks.map((t) => (
+      {tasks.map((t, i) => (
         <TaskCard
-          key={t.id}
+          key={t.id ?? `task-${i}`}
           task={t}
           onDelete={onDelete}
           onEdit={onEdit}
