@@ -1,4 +1,5 @@
 import React from 'react'
+import { Box } from '@mui/material'
 import type { Task } from '../types'
 import TaskCard from './TaskCard'
 
@@ -16,7 +17,7 @@ type Props = {
 
 export default function TaskList({ tasks, onDelete, onEdit, onToggle, onAddToDate, onAddSubtask, onToggleSubtask, onDeleteSubtask, onEditSubtask }: Props) {
   return (
-    <div>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       {tasks.map((t, i) => (
         <TaskCard
           key={t.id ?? `task-${i}`}
@@ -31,6 +32,6 @@ export default function TaskList({ tasks, onDelete, onEdit, onToggle, onAddToDat
           onEditSubtask={onEditSubtask}
         />
       ))}
-    </div>
+    </Box>
   )
 }

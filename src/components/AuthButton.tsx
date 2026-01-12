@@ -41,20 +41,28 @@ export default function AuthButton() {
     return (
       <>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button color="inherit" onClick={async () => { setLoading(true); try { await signInWithGoogle() } catch (e:any) { setError(e?.message || 'Google sign-in failed'); setOpenSnack(true) } finally { setLoading(false) } }} startIcon={loading ? <CircularProgress color="inherit" size={16} /> : null} disabled={loading}>Sign in with Google</Button>
-          <Button color="inherit" onClick={() => setShowEmail('signin')} disabled={loading}>Sign in with Email</Button>
-          <Button color="inherit" onClick={() => setShowEmail('signup')} disabled={loading}>Sign up</Button>
+          <Button
+            onClick={async () => { setLoading(true); try { await signInWithGoogle() } catch (e:any) { setError(e?.message || 'Google sign-in failed'); setOpenSnack(true) } finally { setLoading(false) } }}
+            startIcon={loading ? <CircularProgress color="inherit" size={16} /> : null}
+            disabled={loading}
+            variant="contained"
+            sx={{ background: 'linear-gradient(90deg,#7b61ff,#00d4ff)', color: 'white', '&:hover': { filter: 'brightness(1.05)' } }}
+          >
+            Sign in with Google
+          </Button>
+          <Button variant="outlined" color="primary" onClick={() => setShowEmail('signin')} disabled={loading}>Sign in</Button>
+          <Button variant="text" color="primary" onClick={() => setShowEmail('signup')} disabled={loading}>Create account</Button>
         </Box>
 
-        <Dialog open={!!showEmail} onClose={() => setShowEmail(null)}>
-          <DialogTitle>{showEmail === 'signup' ? 'Sign up' : 'Sign in'}</DialogTitle>
+        <Dialog open={!!showEmail} onClose={() => setShowEmail(null)} PaperProps={{ sx: { bgcolor: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(6px)' } }}>
+          <DialogTitle sx={{ color: 'text.primary' }}>{showEmail === 'signup' ? 'Create account' : 'Sign in'}</DialogTitle>
           <DialogContent>
-            <TextField autoFocus margin="dense" label="Email" type="email" fullWidth value={email} onChange={(e) => setEmail(e.target.value)} />
-            <TextField margin="dense" label="Password" type="password" fullWidth value={password} onChange={(e) => setPassword(e.target.value)} />
+            <TextField autoFocus margin="dense" label="Email" type="email" fullWidth value={email} onChange={(e) => setEmail(e.target.value)} sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 1 }} />
+            <TextField margin="dense" label="Password" type="password" fullWidth value={password} onChange={(e) => setPassword(e.target.value)} sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 1 }} />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setShowEmail(null)} disabled={loading}>Cancel</Button>
-            <Button onClick={submitEmail} disabled={loading}>{loading ? <CircularProgress size={16} /> : (showEmail === 'signup' ? 'Create account' : 'Sign in')}</Button>
+            <Button onClick={submitEmail} disabled={loading} variant="contained" sx={{ background: 'linear-gradient(90deg,#7b61ff,#00d4ff)', color: 'white' }}>{loading ? <CircularProgress size={16} /> : (showEmail === 'signup' ? 'Create account' : 'Sign in')}</Button>
           </DialogActions>
         </Dialog>
 
@@ -72,13 +80,14 @@ export default function AuthButton() {
   return (
     <>
       <Button
-        color="inherit"
         onClick={openMenu}
-        startIcon={user.photoURL ? <Avatar src={user.photoURL} /> : <Avatar>{(nameOrEmail || 'U').charAt(0).toUpperCase()}</Avatar>}
+        startIcon={user.photoURL ? <Avatar src={user.photoURL} /> : <Avatar sx={{ bgcolor: 'primary.main' }}>{(nameOrEmail || 'U').charAt(0).toUpperCase()}</Avatar>}
+        variant="text"
+        sx={{ color: 'text.primary' }}
       >
         <Typography variant="button" sx={{ textTransform: 'none' }}>{nameOrEmail}</Typography>
       </Button>
-      <Menu anchorEl={anchor} open={!!anchor} onClose={closeMenu}>
+      <Menu anchorEl={anchor} open={!!anchor} onClose={closeMenu} PaperProps={{ sx: { bgcolor: 'rgba(255,255,255,0.03)' } }}>
         <MenuItem onClick={() => { closeMenu(); signOutUser() }}>Sign out</MenuItem>
       </Menu>
     </>
