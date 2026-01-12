@@ -181,9 +181,11 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onAddToDate
           sx={{
             mb: 1,
             borderRadius: 12,
-            bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(30,34,40,0.45)' : 'rgba(255,255,255,0.6)',
+            bgcolor: (t) => (t.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.8)'),
             backdropFilter: 'blur(6px)',
-            border: '1px solid rgba(255,255,255,0.06)'
+            border: '1px solid rgba(255,255,255,0.04)',
+            borderLeft: (t) => `6px solid ${t.palette.primary.main}`,
+            overflow: 'hidden'
           }}
           role="article"
           aria-labelledby={`task-${task.id}-title`}
@@ -195,6 +197,7 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onAddToDate
                   checked={task.completed}
                   onChange={() => onToggle(task.id)}
                   disabled={isLocked}
+                  color="secondary"
                   inputProps={{ 'aria-label': task.completed ? `Mark ${task.title} incomplete` : `Mark ${task.title} complete` }}
                 />
               </span>

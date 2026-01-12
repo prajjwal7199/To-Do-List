@@ -52,15 +52,15 @@ export default function HistoryView() {
         const completed = list.filter((t) => t.completed).length
         const pct = total === 0 ? 0 : (completed / total) * 100
         return (
-          <Accordion key={date} defaultExpanded={false}>
+          <Accordion key={date} defaultExpanded={false} sx={{ bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', justifyContent: 'space-between' }}>
                 <Box>
-                  <Typography variant="subtitle1">{date}</Typography>
+                  <Typography variant="subtitle1" sx={{ color: 'text.primary' }}>{date}</Typography>
                   <Typography variant="caption" color="text.secondary">{`${completed} / ${total} completed`}</Typography>
                 </Box>
                 <Box sx={{ width: 200 }}>
-                  <LinearProgress variant="determinate" value={pct} />
+                  <LinearProgress variant="determinate" value={pct} sx={{ height: 10, borderRadius: 99, '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg,#7b61ff,#00d4ff)' } }} />
                 </Box>
               </Box>
             </AccordionSummary>

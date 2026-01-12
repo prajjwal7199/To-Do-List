@@ -27,10 +27,15 @@ export default function ProductivityMeter({ date }: Props) {
 
   return (
     <Box>
-      <Typography variant="subtitle1">Productivity</Typography>
+      <Typography variant="subtitle1" sx={{ color: 'text.primary' }}>Productivity</Typography>
       <Typography variant="body2" color="text.secondary">{`${completed} / ${total} completed`}</Typography>
       <Box sx={{ mt: 1 }}>
-        <LinearProgress variant="determinate" value={pct * 100} color={color} />
+        <LinearProgress
+          variant="determinate"
+          value={pct * 100}
+          color="secondary"
+          sx={{ height: 10, borderRadius: 99, '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg,#7b61ff,#00d4ff)' } }}
+        />
       </Box>
     </Box>
   )

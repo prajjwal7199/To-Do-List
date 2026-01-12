@@ -45,30 +45,53 @@ export async function startSync(store: Store) {
     // eslint-disable-next-line no-console
     console.log(`onAuthStateChanged: signed-in uid=${uid}, doc=users/${uid}`)
 
-    // Listen for remote changes and update Redux
+    // Track last server payload to avoid read/write loops
+    let lastServerPayload = ''
+
+    // Listen for remote changes and update Redux only when remote differs
     onSnapshot(docRef, (snapshot) => {
       const data = snapshot.data()
       if (!data) return
-      // tasks may be saved either as an array or as an object with `items`.
-      if (data.tasks) {
-        const tasksPayload = Array.isArray(data.tasks) ? data.tasks : data.tasks.items || []
-        store.dispatch(setAll(tasksPayload))
+
+      const tasksPayload = data.tasks
+        ? Array.isArray(data.tasks)
+          ? data.tasks
+          : data.tasks.items || []
+        : []
+      const productivityPayload = data.productivity || {}
+
+      const serverPayload = { tasks: tasksPayload, productivity: productivityPayload }
+      const serverStr = JSON.stringify(serverPayload)
+
+      // if server payload equals last known server payload, no-op
+      if (serverStr === lastServerPayload) return
+      lastServerPayload = serverStr
+
+      // Only update Redux if local state differs from server
+      try {
+        const state = store.getState() as any
+        const localPayload = { tasks: state.tasks?.items || [], productivity: state.productivity || {} }
+        const localStr = JSON.stringify(localPayload)
+        if (localStr !== serverStr) {
+          store.dispatch(setAll(tasksPayload))
+          store.dispatch(setAllProductivity(productivityPayload))
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Error comparing local and server state', e)
       }
-      if (data.productivity) store.dispatch(setAllProductivity(data.productivity))
     })
 
-    // Persist local changes back to Firestore
-    let last = ''
-    store.subscribe(() => {
-      try {
-        const s = JSON.stringify(store.getState())
-        if (s === last) return
-        last = s
-        const state = store.getState() as any
-        // write tasks.items (array) and productivity object
-        const payload = { tasks: state.tasks?.items || [], productivity: state.productivity || {} }
+    // Persist local changes back to Firestore if they differ from last server payload.
+    // Use a debounce to avoid rapid write loops on transient state changes.
+    let writeTimer: ReturnType<typeof setTimeout> | null = null
+    const scheduleWrite = (payload: any, payloadStr: string) => {
+      if (writeTimer) clearTimeout(writeTimer)
+      writeTimer = setTimeout(() => {
+        writeTimer = null
+        // optimistic update of lastServerPayload to avoid immediate loop
+        lastServerPayload = payloadStr
         try {
-          // Firestore rejects undefined values. Remove them by serializing/deserializing.
           const cleaned = JSON.parse(JSON.stringify(payload))
           setDoc(docRef, cleaned).catch((err) => {
             // eslint-disable-next-line no-console
@@ -78,6 +101,16 @@ export async function startSync(store: Store) {
           // eslint-disable-next-line no-console
           console.error('Failed to prepare user state for Firestore', err)
         }
+      }, 300)
+    }
+
+    store.subscribe(() => {
+      try {
+        const state = store.getState() as any
+        const payload = { tasks: state.tasks?.items || [], productivity: state.productivity || {} }
+        const payloadStr = JSON.stringify(payload)
+        if (payloadStr === lastServerPayload) return
+        scheduleWrite(payload, payloadStr)
       } catch (e) {
         // ignore
       }

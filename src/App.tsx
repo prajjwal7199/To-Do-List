@@ -1,4 +1,7 @@
 import React, { useMemo, useState } from 'react'
+import { onAuthStateChanged, User } from 'firebase/auth'
+import { auth } from './firebase'
+import SignInPage from './components/SignInPage'
 import { Container, AppBar, Toolbar, IconButton, Typography, Box, Paper, Switch, Tabs, Tab, InputBase } from '@mui/material'
 import { useDispatch, useSelector } from 'react-redux'
 import { copyBucketToDate } from './redux/slices/tasksSlice'
@@ -18,6 +21,7 @@ import { format } from 'date-fns'
 
 export default function App() {
   const [dark, setDark] = useState(false)
+  const [user, setUser] = useState<User | null>(auth.currentUser)
   const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
   const dispatch = useDispatch()
 
@@ -28,14 +32,20 @@ export default function App() {
   // Rollover: if there are no tasks for today, copy bucket tasks into today's date once on load.
   const tasks = useSelector((s: any) => s.tasks.items as any[])
   React.useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u))
+    return () => unsub()
+  }, [])
+  React.useEffect(() => {
     const today = format(new Date(), 'yyyy-MM-dd')
     const hasToday = tasks.some((t) => t.date === today)
     if (!hasToday) dispatch(copyBucketToDate({ date: today }))
   }, [dispatch, tasks])
 
+  if (!user) return <SignInPage />
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary', pb: 6 }}>
+      <Box sx={{ minHeight: '100vh', pb: 6, background: 'linear-gradient(180deg,#071033 0%,#081026 40%,#071936 100%)', color: 'text.primary' }}>
         {/* Glass header with subtle blur and elevated shadow */}
         <AppBar
           position="sticky"
@@ -62,7 +72,7 @@ export default function App() {
         </AppBar>
 
         <Container sx={{ py: 4, maxWidth: { xs: '100%', md: 'lg' } }}>
-          <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 16, bgcolor: 'background.paper', boxShadow: '0 8px 28px rgba(14, 20, 30, 0.06)' }}>
+          <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 16, bgcolor: (t) => (t.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'background.paper'), boxShadow: '0 14px 40px rgba(2,6,23,0.5)' }}>
             <Box>
               <Tabs
                 value={view}

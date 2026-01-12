@@ -2,35 +2,52 @@ import { createTheme } from '@mui/material/styles'
 
 // Material-3 inspired tokens with modern neutral palette and gentle accents.
 // Export a function to get theme by mode to make switching explicit.
-export const getTheme = (mode: 'light' | 'dark' = 'light') =>
+export const getTheme = (mode: 'light' | 'dark' = 'dark') =>
   createTheme({
     palette: {
       mode,
       ...(mode === 'light'
         ? {
-            primary: { main: '#6C4CF0' },
-            secondary: { main: '#00C2A8' },
-            background: { default: '#f6f7fb', paper: 'rgba(255,255,255,0.6)' },
-            surface: { main: 'rgba(255,255,255,0.6)' }
+            primary: { main: '#7b61ff' },
+            secondary: { main: '#00d4ff' },
+            background: { default: '#f6f7fb', paper: 'rgba(255,255,255,0.8)' },
+            surface: { main: 'rgba(255,255,255,0.8)' }
           }
         : {
-            primary: { main: '#9A8CFF' },
-            secondary: { main: '#3CE6C3' },
-            background: { default: '#0b0f14', paper: 'rgba(20,24,30,0.45)' },
-            surface: { main: 'rgba(20,24,30,0.45)' }
+            primary: { main: '#7b61ff' },
+            secondary: { main: '#00d4ff' },
+            background: { default: '#071033', paper: 'rgba(255,255,255,0.04)' },
+            surface: { main: 'rgba(255,255,255,0.04)' }
           })
     },
     typography: {
       fontFamily: ['Inter', 'Segoe UI', 'Roboto', 'system-ui', 'sans-serif'].join(','),
-      h6: { fontWeight: 600 },
-      body1: { fontSize: '0.98rem' }
+      h6: { fontWeight: 700 },
+      h5: { fontWeight: 700 },
+      body1: { fontSize: '1rem' }
     },
     components: {
-      MuiCard: {
+      MuiPaper: {
         styleOverrides: {
           root: {
             borderRadius: 12,
-            boxShadow: '0 6px 18px rgba(18, 24, 40, 0.06)'
+            backgroundClip: 'border-box'
+          }
+        }
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            background: 'linear-gradient(90deg, rgba(123,97,255,0.12), rgba(0,212,255,0.06))',
+            borderBottom: '1px solid rgba(255,255,255,0.04)'
+          }
+        }
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 14,
+            boxShadow: '0 10px 30px rgba(2,6,23,0.5)'
           }
         }
       }

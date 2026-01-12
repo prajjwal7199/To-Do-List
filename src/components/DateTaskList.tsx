@@ -11,14 +11,12 @@ import { parseISO, format as fmt, isToday, isTomorrow } from 'date-fns'
 type Props = { date: string }
 
 export default function DateTaskList({ date }: Props) {
-  const tasks = useSelector((s: any) => s.tasks.items as Task[])
+  const tasks = useSelector((s: any) => (s.tasks?.items ?? []) as Task[])
   const dispatch = useDispatch()
 
   // include tasks for the selected date and all future dates
   const grouped = useMemo(() => {
-    const future = tasks
-      // exclude dependent tasks (they are shown inside their parent task card)
-      .filter((t) => t.date && t.date >= date && !t.dependsOn)
+    const future = tasks?.filter((t) => t.date && t.date >= date && !t.dependsOn)
       .sort((a, b) => (a.date! < b.date! ? -1 : a.date! > b.date! ? 1 : 0))
     const map = new Map<string, Task[]>()
     for (const t of future) {
@@ -41,9 +39,9 @@ export default function DateTaskList({ date }: Props) {
   return (
     <Box>
       <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center' }}>
-        <TextField value={title} onChange={(e) => setTitle(e.target.value)} fullWidth size="small" placeholder="New task" />
+        <TextField value={title} onChange={(e) => setTitle(e.target.value)} fullWidth size="small" placeholder="New task" sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 1 }} />
         <Tooltip title="Add task">
-          <IconButton color="success" onClick={handleAdd} aria-label="add task">
+          <IconButton color="primary" onClick={handleAdd} aria-label="add task">
             <AddIcon />
           </IconButton>
         </Tooltip>
@@ -53,7 +51,7 @@ export default function DateTaskList({ date }: Props) {
       ) : (
         grouped.map(([d, list]) => (
           <Box key={d} sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.primary', fontWeight: 700 }}>
               {isToday(parseISO(d)) ? `Today — ${fmt(parseISO(d), 'PPP')}` : isTomorrow(parseISO(d)) ? `Tomorrow — ${fmt(parseISO(d), 'PPP')}` : fmt(parseISO(d), 'PPP')}
             </Typography>
             <TaskList

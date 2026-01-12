@@ -34,20 +34,27 @@ export default function TaskBucket() {
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 1 }}>Task Bucket (Global)</Typography>
+      <Typography variant="h6" sx={{ mb: 1, color: 'text.primary' }}>Task Bucket (Global)</Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
         These tasks are global and will be added to each new day automatically.
       </Typography>
 
       <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
-        <TextField value={title} onChange={(e) => setTitle(e.target.value)} size="small" placeholder="New bucket task" fullWidth />
+        <TextField
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          size="small"
+          placeholder="New bucket task"
+          fullWidth
+          sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 1 }}
+        />
         <Tooltip title="Add bucket task">
-          <IconButton color="success" onClick={handleAdd} aria-label="add bucket task">
+          <IconButton color="primary" onClick={handleAdd} aria-label="add bucket task">
             <AddIcon />
           </IconButton>
         </Tooltip>
       </Box>
-      <TextField value={desc} onChange={(e) => setDesc(e.target.value)} size="small" placeholder="Description (optional)" fullWidth sx={{ mb: 1 }} />
+      <TextField value={desc} onChange={(e) => setDesc(e.target.value)} size="small" placeholder="Description (optional)" fullWidth sx={{ mb: 1, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 1 }} />
 
       {unassigned.length === 0 ? (
         <Typography color="text.secondary">No bucket tasks</Typography>

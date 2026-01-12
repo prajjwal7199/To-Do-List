@@ -47,20 +47,20 @@ export default function Backlog() {
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 1 }}>Backlog</Typography>
+      <Typography variant="h6" sx={{ mb: 1, color: 'text.primary' }}>Backlog</Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
         Long-term tasks. Use "+" to schedule them into any date later.
       </Typography>
 
       <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
-        <TextField value={title} onChange={(e) => setTitle(e.target.value)} size="small" placeholder="New backlog task" fullWidth />
+        <TextField value={title} onChange={(e) => setTitle(e.target.value)} size="small" placeholder="New backlog task" fullWidth sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 1 }} />
         <Tooltip title="Add backlog task">
-          <IconButton color="success" onClick={handleAdd} aria-label="add backlog task">
+          <IconButton color="primary" onClick={handleAdd} aria-label="add backlog task">
             <AddIcon />
           </IconButton>
         </Tooltip>
       </Box>
-      <TextField value={desc} onChange={(e) => setDesc(e.target.value)} size="small" placeholder="Description (optional)" fullWidth sx={{ mb: 1 }} />
+      <TextField value={desc} onChange={(e) => setDesc(e.target.value)} size="small" placeholder="Description (optional)" fullWidth sx={{ mb: 1, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 1 }} />
 
       {backlog.length === 0 ? (
         <Typography color="text.secondary">No backlog tasks</Typography>

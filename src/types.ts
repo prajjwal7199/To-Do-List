@@ -18,6 +18,10 @@ export interface Task {
   backlog?: boolean
   date?: string // ISO date (yyyy-mm-dd)
   createdAt: string
+  // If this task was copied from a bucket/global task, this stores the original task id
+  originId?: string
+  // Dates for which this global/bucket task should NOT be auto-copied into daily lists
+  excludedDates?: string[]
 }
 
 export interface Subtask {

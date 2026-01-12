@@ -38,7 +38,17 @@ const tasksSlice = createSlice({
       if (t) Object.assign(t, action.payload.changes)
     },
     deleteTask(state, action: PayloadAction<string>) {
-      state.items = state.items.filter((x) => x.id !== action.payload)
+      const id = action.payload
+      const toDelete = state.items.find((x) => x.id === id)
+      // If this is a copied task from a bucket (has originId) mark that origin as excluded for this date
+      if (toDelete && toDelete.originId && toDelete.date) {
+        const origin = state.items.find((x) => x.id === toDelete.originId)
+        if (origin) {
+          if (!origin.excludedDates) origin.excludedDates = []
+          if (!origin.excludedDates.includes(toDelete.date)) origin.excludedDates.push(toDelete.date)
+        }
+      }
+      state.items = state.items.filter((x) => x.id !== id)
     },
     toggleComplete(state, action: PayloadAction<string>) {
       const t = state.items.find((x) => x.id === action.payload)
@@ -78,10 +88,13 @@ const tasksSlice = createSlice({
     // Avoid creating duplicate tasks for the same title+date.
     copyBucketToDate(state, action: PayloadAction<{ date: string }>) {
       const { date } = action.payload
-  // bucket tasks are those without a date and not marked as backlog
-  const bucket = state.items.filter((t) => !t.date && !t.backlog)
+      // bucket tasks are those without a date and not marked as backlog
+      const bucket = state.items.filter((t) => !t.date && !t.backlog)
       for (const b of bucket) {
-        const exists = state.items.some((t) => t.date === date && t.title === b.title)
+        // skip if this bucket task has an explicit exclusion for this date
+        if (b.excludedDates && b.excludedDates.includes(date)) continue
+        // avoid creating duplicate tasks for the same date/title or if an existing copy of this origin exists
+        const exists = state.items.some((t) => t.date === date && (t.title === b.title || t.originId === b.id))
         if (!exists) {
           state.items.push({
             id: nanoid(),
@@ -90,7 +103,8 @@ const tasksSlice = createSlice({
             completed: false,
             subtasks: b.subtasks ? b.subtasks.map((s) => ({ ...s, id: nanoid(), completed: false })) : [],
             date,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            originId: b.id
           })
         }
       }
