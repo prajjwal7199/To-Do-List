@@ -7,6 +7,10 @@ const tasksSlice = createSlice({
   name: 'tasks',
   initialState,
   reducers: {
+    // Replace all tasks (used when loading from Firestore)
+    setAll(state, action: PayloadAction<Task[]>) {
+      state.items = action.payload || []
+    },
     addTask: {
       reducer(state, action: PayloadAction<Task>) {
         state.items.push(action.payload)
@@ -195,6 +199,7 @@ const tasksSlice = createSlice({
 })
 
 export const {
+  setAll,
   addTask,
   editTask,
   deleteTask,

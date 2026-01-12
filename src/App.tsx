@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react'
 import { Container, AppBar, Toolbar, IconButton, Typography, Box, Paper, Switch, Tabs, Tab, InputBase } from '@mui/material'
-import { useDispatch } from 'react-redux'
-import { loadState, saveState } from './utils/localStorage'
+import { useDispatch, useSelector } from 'react-redux'
 import { copyBucketToDate } from './redux/slices/tasksSlice'
 import MenuIcon from '@mui/icons-material/Menu'
+import AuthButton from './components/AuthButton'
 import SearchIcon from '@mui/icons-material/Search'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -25,22 +25,23 @@ export default function App() {
 
   const onToggleTheme = () => setDark((d) => !d)
 
-  // Rollover: copy bucket tasks into today's date once per day.
+  // Rollover: if there are no tasks for today, copy bucket tasks into today's date once on load.
+  const tasks = useSelector((s: any) => s.tasks.items as any[])
   React.useEffect(() => {
-    const last = loadState<string>('lastRollDate')
     const today = format(new Date(), 'yyyy-MM-dd')
-    if (last !== today) {
-      // dispatch action to copy bucket tasks into today's date
-      dispatch(copyBucketToDate({ date: today }))
-      saveState('lastRollDate', today)
-    }
-  }, [dispatch])
+    const hasToday = tasks.some((t) => t.date === today)
+    if (!hasToday) dispatch(copyBucketToDate({ date: today }))
+  }, [dispatch, tasks])
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary', pb: 6 }}>
         {/* Glass header with subtle blur and elevated shadow */}
-        <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'transparent', backdropFilter: 'blur(6px)', py: 1 }}>
+        <AppBar
+          position="sticky"
+          elevation={0}
+          sx={{ bgcolor: 'background.paper', color: 'text.primary', backdropFilter: 'blur(6px)', py: 1 }}
+        >
           <Toolbar sx={{ mx: { xs: 1, md: 4 }, bgcolor: 'transparent', display: 'flex', gap: 2 }}>
             <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 1, bgcolor: 'rgba(255,255,255,0.04)' }}>
               <MenuIcon />
@@ -56,6 +57,7 @@ export default function App() {
 
             <Typography variant="body2" sx={{ ml: 1, mr: 1 }}>Dark</Typography>
             <Switch checked={dark} onChange={onToggleTheme} inputProps={{ 'aria-label': 'toggle theme' }} />
+            <AuthButton />
           </Toolbar>
         </AppBar>
 

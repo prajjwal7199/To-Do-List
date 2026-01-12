@@ -15,6 +15,10 @@ const productivitySlice = createSlice({
   name: 'productivity',
   initialState: defaultSettings,
   reducers: {
+    // Replace entire productivity settings (used when loading from Firestore)
+    setAll(state, action: PayloadAction<ProductivitySettings>) {
+      return action.payload
+    },
     setDailyGoal(state, action: PayloadAction<number>) {
       state.dailyGoal = action.payload
     },
@@ -25,5 +29,7 @@ const productivitySlice = createSlice({
 })
 
 export const { setDailyGoal, setThresholds } = productivitySlice.actions
+
+export const { setAll: setAllProductivity } = productivitySlice.actions
 
 export default productivitySlice.reducer

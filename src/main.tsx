@@ -6,6 +6,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import App from './App'
 import { store } from './redux/store'
 import { getTheme } from './theme'
+import { startSync } from './firebase'
 
 const root = createRoot(document.getElementById('root')!)
 
@@ -20,3 +21,6 @@ root.render(
     </Provider>
   </React.StrictMode>
 )
+
+// start Firestore sync (anonymous auth + realtime updates)
+startSync(store)
