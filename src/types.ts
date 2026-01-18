@@ -39,6 +39,16 @@ export interface Task {
   important?: boolean;
   // Drag-and-drop order
   order?: number;
+  // allow moving undone tasks from previous dates
+  allowMoveUndone?: boolean;
+  // if task was moved from another date, record the target date
+  movedToDate?: string;
+  // if task was moved to backlog
+  movedToBacklog?: boolean;
+  // optional completion time (e.g., "02:15 PM")
+  completedTime?: string;
+  // optional reason for marking a task undone/cancelled
+  undoneReason?: string;
 }
 export interface RecurringPattern {
   frequency: "daily" | "weekly" | "monthly" | "custom";
@@ -87,6 +97,8 @@ export interface CompletionRecord {
   completed: number;
   total: number;
   categories: Record<string, number>;
+  // number of tasks marked undone/cancelled for this date
+  undone?: number;
 }
 export interface StreakData {
   current: number;

@@ -17,7 +17,7 @@ import {
   ThemeProvider,
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
-import { copyBucketToDate, processRecurring } from "./redux/slices/tasksSlice";
+import { copyBucketToDate, processRecurring, unlockTask } from "./redux/slices/tasksSlice";
 import MenuIcon from "@mui/icons-material/Menu";
 import AuthButton from "./components/AuthButton";
 import SearchIcon from "@mui/icons-material/Search";
@@ -29,6 +29,7 @@ import Backlog from "./components/Backlog";
 import TaskBucket from "./components/TaskBucket";
 import ProductivityMeter from "./components/ProductivityMeter";
 import HistoryView from "./components/HistoryView";
+import SummaryPanel from "./components/SummaryPanel";
 import ScheduleTasks from "./components/ScheduleTasks";
 import CalendarView from "./components/CalendarView";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
@@ -54,6 +55,7 @@ export default function App() {
     | "categories"
   >("tasks");
   const onToggleTheme = () => setDark((d) => !d);
+  const [search, setSearch] = useState("");
   // Create theme based on dark state
   const theme = useMemo(() => getTheme(dark ? "dark" : "light"), [dark]);
 
@@ -73,6 +75,51 @@ export default function App() {
     // Process recurring tasks daily
     dispatch(processRecurring());
   }, [dispatch, tasks]);
+
+  // Global unlock scheduler: checks for tasks whose `availableAt` has passed,
+  // dispatches `unlockTask`, and shows a notification + sound.
+  React.useEffect(() => {
+    const speakUnlock = (title: string) => {
+      try {
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        const text = `Time's up. The task "${title}" is available now. Get up!`;
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = "en-US";
+        try {
+          synth.cancel();
+        } catch (e) {}
+        synth.speak(utter);
+      } catch (e) {}
+    };
+
+    const showUnlockNotification = (title: string) => {
+      try {
+        if (!("Notification" in window)) return;
+        if (Notification.permission === "granted") {
+          new Notification("Task available", { body: title });
+          return;
+        }
+        if (Notification.permission !== "denied") {
+          Notification.requestPermission().then((perm) => {
+            if (perm === "granted") new Notification("Task available", { body: title });
+          });
+        }
+      } catch (e) {}
+    };
+
+    const id = setInterval(() => {
+      const now = Date.now();
+      for (const t of tasks) {
+        if (t.availableAt && Date.parse(t.availableAt) <= now) {
+          dispatch(unlockTask(t.id));
+          speakUnlock(t.title);
+          showUnlockNotification(t.title);
+        }
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [tasks, dispatch]);
   if (!user) return <SignInPage />;
   return (
     <ThemeProvider theme={theme}>
@@ -140,6 +187,8 @@ export default function App() {
                 <SearchIcon fontSize="small" color="inherit" />
                 <InputBase
                   id="header-search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                   placeholder="Quick search tasks"
                   inputProps={{ "aria-label": "search tasks" }}
                   sx={{ ml: 1, flex: 1 }}
@@ -269,7 +318,7 @@ export default function App() {
                           </Typography>
                         </Box>
                         {view === "tasks" ? (
-                          <DateTaskList date={date} />
+                          <DateTaskList date={date} search={search} />
                         ) : view === "recommended" ? (
                           <TaskBucket />
                         ) : view === "calendar" ? (
@@ -296,8 +345,11 @@ export default function App() {
                           gap: 2,
                         }}
                       >
+                        {view === 'tasks' && (
+                          <SummaryPanel />
+                        )}
                         <Paper sx={{ p: 2, borderRadius: 12 }} elevation={0}>
-                          <ProductivityMeter date={date} />
+                          <ProductivityMeter date={view === 'tasks' ? date : undefined} />
                         </Paper>
                       </Box>
                     </Box>

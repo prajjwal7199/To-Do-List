@@ -38,20 +38,23 @@ export default function ProductivityMeter({ date }: Props) {
   return (
     <Box>
       <Typography variant="subtitle1" sx={{ color: "text.primary" }}>
-        Productivity
+        {date ? "Today's Productivity" : "Overall Productivity"}
       </Typography>
-      <Typography
-        variant="body2"
-        color="text.secondary"
-      >{`${completed} / ${total} completed`}</Typography>
+      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+        {Math.round(pct * 100)}%
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {`${completed} / ${total} completed`}
+      </Typography>
       <Box sx={{ mt: 1 }}>
         <LinearProgress
           variant="determinate"
           value={pct * 100}
-          color="secondary"
+          color={color}
           sx={{
-            height: 10,
+            height: 12,
             borderRadius: 99,
+            background: "transparent",
             "& .MuiLinearProgress-bar": {
               background: "linear-gradient(90deg,#7b61ff,#00d4ff)",
             },

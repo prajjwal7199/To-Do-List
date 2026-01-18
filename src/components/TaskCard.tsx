@@ -8,6 +8,7 @@ import {
   Box,
   TextField,
   Tooltip,
+  Snackbar,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -23,13 +24,23 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CancelIcon from "@mui/icons-material/Cancel";
 import AddTaskIcon from "@mui/icons-material/AddTask";
 import AddIcon from "@mui/icons-material/Add";
+import ArchiveIcon from "@mui/icons-material/Archive";
+import UndoIcon from "@mui/icons-material/Undo";
 import LinkIcon from "@mui/icons-material/Link";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
+import LocalCafeIcon from '@mui/icons-material/LocalCafe';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import CodeIcon from '@mui/icons-material/Code';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { motion } from "framer-motion";
 import type { Task } from "../types";
 import { useDispatch, useSelector } from "react-redux";
@@ -43,6 +54,8 @@ import {
   setReminder,
   clearReminder,
   editTask,
+  assignDate,
+  markUndoneWithReason,
 } from "../redux/slices/tasksSlice";
 
 type Props = {
@@ -55,6 +68,7 @@ type Props = {
   onToggleSubtask?: (taskId: string, subtaskId: string) => void;
   onDeleteSubtask?: (taskId: string, subtaskId: string) => void;
   onEditSubtask?: (taskId: string, subtaskId: string, title: string) => void;
+  // removed move handlers; drag-and-drop handles ordering
   // dependency handled locally via dialog and internal actions
 };
 
@@ -89,8 +103,9 @@ export default function TaskCard({
 
   //Find category name from ID
   const getCategoryName = (categoryId: string) => {
-    const category = categories.find((c: any) => c === categoryId) || "Uncategorized";
-    return category?.name || categoryId;
+    if (!categoryId) return "Uncategorized";
+    const category = categories.find((c: any) => c.id === categoryId);
+    return category ? category.name : categoryId;
   };
 
   // dependency dialog state
@@ -100,6 +115,19 @@ export default function TaskCard({
   const [hours, setHours] = React.useState(0);
   const [minutes, setMinutes] = React.useState(0);
   const [seconds, setSeconds] = React.useState(0);
+  const [snackOpen, setSnackOpen] = React.useState(false);
+  const [snackMsg, setSnackMsg] = React.useState("");
+  const [completionDialogOpen, setCompletionDialogOpen] = React.useState(false);
+  const [completionTimeInput, setCompletionTimeInput] = React.useState("");
+  // dependent edit dialog state
+  const [depEditOpen, setDepEditOpen] = React.useState(false);
+  const [depEditId, setDepEditId] = React.useState<string | null>(null);
+  const [depEditTitle, setDepEditTitle] = React.useState("");
+  const [depEditHours, setDepEditHours] = React.useState(0);
+  const [depEditMinutes, setDepEditMinutes] = React.useState(0);
+  const [depEditSeconds, setDepEditSeconds] = React.useState(0);
+  const [undoneDialogOpen, setUndoneDialogOpen] = React.useState(false);
+  const [undoneReasonInput, setUndoneReasonInput] = React.useState("");
   const [remOpen, setRemOpen] = React.useState(false);
   const [remValue, setRemValue] = React.useState("");
 
@@ -111,6 +139,8 @@ export default function TaskCard({
   const [editCategory, setEditCategory] = React.useState("");
   const [editTags, setEditTags] = React.useState<string[]>([]);
   const [newTag, setNewTag] = React.useState("");
+  const [aiIconName, setAiIconName] = React.useState<string | null>(null);
+  const [aiIconLoading, setAiIconLoading] = React.useState(false);
 
   function openEditDialog() {
     setEditTitle(task.title);
@@ -154,6 +184,19 @@ export default function TaskCard({
     setDepOpen(true);
   }
 
+  // generate a small icon keyword via AI and map it to known icons
+  async function handleGenerateIcon() {
+    try {
+      setAiIconLoading(true);
+      const { suggestIconKeyword } = await import("../utils/ai");
+      const txt = `${task.title}${task.description ? ' - ' + task.description : ''}`;
+      const kw = await suggestIconKeyword(txt);
+      setAiIconName(kw || 'default');
+    } catch (e) {
+      setAiIconName('default');
+    } finally { setAiIconLoading(false); }
+  }
+
   function formatLocalInput(iso?: string) {
     if (!iso) return "";
     const d = new Date(iso);
@@ -185,7 +228,8 @@ export default function TaskCard({
 
   async function handleCreateDependent() {
     if (!depTitle.trim()) {
-      window.alert("Please enter a title for the dependent task");
+      setSnackMsg("Please enter a title for the dependent task");
+      setSnackOpen(true);
       return;
     }
     const date = task.date;
@@ -204,10 +248,85 @@ export default function TaskCard({
       }),
     );
     setDepOpen(false);
+    // show a snackbar instead of alert
+    setSnackMsg(`Dependent task "${depTitle}" created`);
+    setSnackOpen(true);
+  }
+
+  function openDependentEdit(d: Task) {
+    setDepEditId(d.id);
+    setDepEditTitle(d.title);
+    const ds = d.dependsOn?.delaySeconds || 0;
+    setDepEditHours(Math.floor(ds / 3600));
+    setDepEditMinutes(Math.floor((ds % 3600) / 60));
+    setDepEditSeconds(ds % 60);
+    setDepEditOpen(true);
+  }
+
+  function handleSaveDependentEdit() {
+    if (!depEditId) return;
+    const delaySeconds = (Number(depEditHours) || 0) * 3600 + (Number(depEditMinutes) || 0) * 60 + (Number(depEditSeconds) || 0);
+    try {
+      dispatch(editTask({ id: depEditId, changes: { title: depEditTitle } }));
+      dispatch(setDependency({ id: depEditId, dependsOn: { taskId: task.id, delaySeconds } }));
+      // if parent already completed, update availableAt
+      if (task.completed) {
+        const at = new Date(Date.now() + delaySeconds * 1000).toISOString();
+        dispatch(editTask({ id: depEditId, changes: { availableAt: at } }));
+      }
+    } catch (e) {}
+    setDepEditOpen(false);
+  }
+
+  // Mark undone with reason
+  function handleMarkUndoneWithReason() {
+    // preserved for backward compatibility; prefer dialog flow
+    try {
+      dispatch(markUndoneWithReason({ id: task.id, reason: undoneReasonInput || undefined } as any) as any);
+      setSnackMsg("Task marked undone");
+      setSnackOpen(true);
+    } catch (e) {}
+  }
+
+  // Move this task to backlog
+  function handleMoveToBacklog() {
+    try {
+      dispatch(editTask({ id: task.id, changes: { backlog: true, date: undefined, movedToBacklog: true } }));
+      setSnackMsg("Task moved to backlog");
+      setSnackOpen(true);
+    } catch (e) {}
+  }
+
+  // Move undone task to a new date (simple prompt-based flow)
+  function handleMoveUndoneToDate() {
+    const newDate = window.prompt("Move undone task to date (YYYY-MM-DD)");
+    if (!newDate) return;
+    try {
+      dispatch(assignDate({ id: task.id, date: newDate }));
+      dispatch(editTask({ id: task.id, changes: { movedToDate: newDate } }));
+      setSnackMsg(`Task moved to ${newDate}`);
+      setSnackOpen(true);
+    } catch (e) {}
+  }
+
+  // handle toggle with optional completion time
+  function handleToggle() {
+    if (isLocked) return;
+    if (!task.completed) {
+      // open completion time dialog instead of prompt
+      setCompletionTimeInput(task.completedTime || "");
+      setCompletionDialogOpen(true);
+      return;
+    }
+    try {
+      onToggle(task.id);
+    } catch (e) {}
   }
 
   // countdown state for locked tasks
   const [remaining, setRemaining] = React.useState<number | null>(null);
+  // tick state to force re-render when dependents have active availability timers
+  const [, setTick] = React.useState(0);
 
   // get all tasks to find dependents (tasks that depend on this task)
   const rawAllTasks = useSelector((s: any) => s.tasks?.items ?? []) as unknown;
@@ -223,7 +342,7 @@ export default function TaskCard({
   React.useEffect(() => {
     const hasAny = dependents.some((d) => !!d.availableAt);
     if (!hasAny) return;
-    const id = setInterval(() => {}, 1000);
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [dependents]);
 
@@ -241,10 +360,16 @@ export default function TaskCard({
             // ignore
           }
           setRemaining(null);
-          // notify user
+          // play sound and show notification (fallback to alert if notifications unavailable)
           try {
-            window.alert(`Task "${task.title}" is now available`);
-          } catch (e) {}
+            speakUnlock(task.title);
+            showUnlockNotification(task.title);
+          } catch (e) {
+            try {
+              setSnackMsg(`Task "${task.title}" is now available`);
+              setSnackOpen(true);
+            } catch (e) {}
+          }
           if (timer) clearInterval(timer);
         } else {
           setRemaining(secs);
@@ -265,7 +390,8 @@ export default function TaskCard({
       const ms = Date.parse(task.reminderAt) - Date.now();
       const notifyAndClear = () => {
         try {
-          window.alert(`Reminder: ${task.title}`);
+          setSnackMsg(`Reminder: ${task.title}`);
+          setSnackOpen(true);
         } catch (e) {}
         try {
           // clear the reminder so it doesn't fire again
@@ -286,6 +412,42 @@ export default function TaskCard({
       if (tId) clearTimeout(tId);
     };
   }, [task.reminderAt, task.title, task.id, dispatch]);
+
+  // helper: speak an unlock message using SpeechSynthesis
+  function speakUnlock(title: string) {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return;
+      const text = `Time's up. The task "${title}" is available now. Get up!`;
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "en-US";
+      // stop any previous speech and speak
+      try {
+        synth.cancel();
+      } catch (e) {}
+      synth.speak(utter);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // helper: show browser notification (asks permission if needed)
+  function showUnlockNotification(title: string) {
+    try {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "granted") {
+        new Notification("Task available", { body: title });
+        return;
+      }
+      if (Notification.permission !== "denied") {
+        Notification.requestPermission().then((perm) => {
+          if (perm === "granted") new Notification("Task available", { body: title });
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
 
   return (
     <motion.div
@@ -324,17 +486,25 @@ export default function TaskCard({
               }
             >
               <span>
-                <Checkbox
-                  checked={task.completed}
-                  onChange={() => onToggle(task.id)}
-                  disabled={isLocked}
-                  color="secondary"
-                  inputProps={{
-                    "aria-label": task.completed
-                      ? `Mark ${task.title} incomplete`
-                      : `Mark ${task.title} complete`,
-                  }}
-                />
+                {task.undoneReason ? (
+                  <Tooltip title={task.undoneReason || "Undone"}>
+                    <IconButton aria-label="undone" onClick={() => setUndoneDialogOpen(true)}>
+                      <CancelIcon />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Checkbox
+                    checked={task.completed}
+                    onChange={() => handleToggle()}
+                    disabled={isLocked}
+                    color="secondary"
+                    inputProps={{
+                      "aria-label": task.completed
+                        ? `Mark ${task.title} incomplete`
+                        : `Mark ${task.title} complete`,
+                    }}
+                  />
+                )}
               </span>
             </Tooltip>
             <div style={{ flex: 1 }}>
@@ -347,7 +517,20 @@ export default function TaskCard({
                   fontWeight: 600,
                 }}
               >
-                {task.title}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  {/* render icon based on AI suggestion or category */}
+                  {(() => {
+                    const name = aiIconName || (task.category || '').toString().toLowerCase();
+                    if (name === 'work' || name === 'workoutline') return <WorkOutlineIcon fontSize="small" />;
+                    if (name === 'coffee' || name === 'cafe') return <LocalCafeIcon fontSize="small" />;
+                    if (name === 'fitness' || name === 'exercise') return <FitnessCenterIcon fontSize="small" />;
+                    if (name === 'code' || name === 'coding') return <CodeIcon fontSize="small" />;
+                    if (name === 'shopping' || name === 'cart') return <ShoppingCartIcon fontSize="small" />;
+                    if (name === 'default' || !name) return <AssignmentIcon fontSize="small" />;
+                    return <AssignmentIcon fontSize="small" />;
+                  })()}
+                  {task.title}
+                </span>
               </Typography>
               {task.priority && (
                 <Box
@@ -403,6 +586,11 @@ export default function TaskCard({
                   {task.description}
                 </Typography>
               ) : null}
+              {task.completed && task.completedTime ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                  Completed at {task.completedTime}
+                </Typography>
+              ) : null}
             </div>
             <Tooltip title={expanded ? "Show less" : "Show more options"}>
               <IconButton
@@ -415,7 +603,6 @@ export default function TaskCard({
                 </IconButton>
             </Tooltip>
           </CardContent>
-
           <Collapse in={expanded} timeout="auto" unmountOnExit>
             <CardContent
               sx={{ pt: 0, display: "flex", alignItems: "center", flexWrap: "wrap" }}
@@ -484,9 +671,37 @@ export default function TaskCard({
             <IconButton size="small" onClick={openEditDialog}>
               <EditIcon />
             </IconButton>
+            {/* move up/down removed — ordering handled via drag-and-drop */}
             <IconButton size="small" onClick={() => onDelete(task.id)}>
               <DeleteIcon />
             </IconButton>
+            <Tooltip title="Move to backlog">
+              <IconButton size="small" onClick={handleMoveToBacklog}>
+                <ArchiveIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Generate icon (AI)">
+              <span>
+                <IconButton size="small" onClick={handleGenerateIcon} disabled={aiIconLoading}>
+                  <AutoAwesomeIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Mark undone / cancel">
+                <IconButton size="small" onClick={() => {
+                  setUndoneReasonInput("");
+                  setUndoneDialogOpen(true);
+                }}>
+                  <UndoIcon />
+                </IconButton>
+            </Tooltip>
+            {task.date && !task.completed && task.allowMoveUndone ? (
+              <Tooltip title="Move undone to another date">
+                <IconButton size="small" onClick={handleMoveUndoneToDate}>
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
+            ) : null}
           </CardContent>
           </Collapse>
 
@@ -720,19 +935,30 @@ export default function TaskCard({
                         py: 0.5,
                       }}
                     >
-                      <Checkbox
-                        size="small"
-                        checked={d.completed}
-                        onChange={() => {
-                          if (locked || !task.completed) return;
-                          if (onToggle) onToggle(d.id);
-                          else dispatch(toggleComplete(d.id));
-                        }}
-                        disabled={locked || !task.completed}
-                        inputProps={{
-                          "aria-label": `Toggle dependent ${d.title}`,
-                        }}
-                      />
+                      {d.undoneReason ? (
+                        <Tooltip title={d.undoneReason || "Undone"}>
+                          <IconButton onClick={() => {
+                            // open dependent edit dialog for this dependent
+                            openDependentEdit(d);
+                          }}>
+                            <CancelIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      ) : (
+                        <Checkbox
+                          size="small"
+                          checked={d.completed}
+                          onChange={() => {
+                            if (locked || !task.completed) return;
+                            if (onToggle) onToggle(d.id);
+                            else dispatch(toggleComplete(d.id));
+                          }}
+                          disabled={locked || !task.completed}
+                          inputProps={{
+                            "aria-label": `Toggle dependent ${d.title}`,
+                          }}
+                        />
+                      )}
                       <div style={{ flex: 1 }}>
                         <Typography
                           variant="body2"
@@ -757,7 +983,7 @@ export default function TaskCard({
                       ) : null}
                       <IconButton
                         size="small"
-                        onClick={() => onEdit(d.id)}
+                        onClick={() => openDependentEdit(d)}
                         aria-label={`Edit ${d.title}`}
                       >
                         <EditIcon fontSize="small" />
@@ -847,6 +1073,98 @@ export default function TaskCard({
            ) : null}
         </Card>
       </motion.div>
+      {/* Dependent edit dialog */}
+      <Dialog open={depEditOpen} onClose={() => setDepEditOpen(false)}>
+        <DialogTitle>Edit dependent task</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1, minWidth: 320 }}>
+            <TextField label="Title" value={depEditTitle} onChange={(e) => setDepEditTitle(e.target.value)} fullWidth />
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <TextField label="Hours" type="number" value={depEditHours} onChange={(e) => setDepEditHours(Number(e.target.value))} size="small" />
+              <TextField label="Minutes" type="number" value={depEditMinutes} onChange={(e) => setDepEditMinutes(Number(e.target.value))} size="small" />
+              <TextField label="Seconds" type="number" value={depEditSeconds} onChange={(e) => setDepEditSeconds(Number(e.target.value))} size="small" />
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDepEditOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveDependentEdit} variant="contained">Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={completionDialogOpen} onClose={() => setCompletionDialogOpen(false)}>
+        <DialogTitle>Completion time</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+            <TextField
+              label="Completion time (e.g. 02:15 PM)"
+              fullWidth
+              value={completionTimeInput}
+              onChange={(e) => setCompletionTimeInput(e.target.value)}
+              size="small"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCompletionDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              try {
+                onToggle(task.id);
+                if (completionTimeInput)
+                  dispatch(editTask({ id: task.id, changes: { completedTime: completionTimeInput } }));
+              } catch (e) {}
+              setCompletionDialogOpen(false);
+              setSnackMsg("Task completed");
+              setSnackOpen(true);
+            }}
+            variant="contained"
+          >
+            Save
+          </Button>
+          <Button
+            onClick={() => {
+              try {
+                onToggle(task.id);
+              } catch (e) {}
+              setCompletionDialogOpen(false);
+              setSnackMsg("Task completed");
+              setSnackOpen(true);
+            }}
+          >
+            Skip time
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={undoneDialogOpen} onClose={() => setUndoneDialogOpen(false)}>
+        <DialogTitle>Mark task undone / cancel</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1 }}>
+            <TextField
+              label="Reason (optional)"
+              value={undoneReasonInput}
+              onChange={(e) => setUndoneReasonInput(e.target.value)}
+              fullWidth
+              multiline
+              rows={3}
+              size="small"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUndoneDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => {
+            try {
+              dispatch(markUndoneWithReason({ id: task.id, reason: undoneReasonInput || undefined } as any) as any);
+              setSnackMsg("Task marked undone");
+              setSnackOpen(true);
+            } catch (e) {}
+            setUndoneDialogOpen(false);
+          }} variant="contained">Mark undone</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={snackOpen} autoHideDuration={4000} onClose={() => setSnackOpen(false)} message={snackMsg} />
     </motion.div>
   );
 }

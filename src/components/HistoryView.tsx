@@ -22,6 +22,7 @@ function getDateKey(d: string) {
 
 export default function HistoryView() {
   const tasks = useSelector((s: any) => s.tasks.items as any[]);
+  const categories = useSelector((s: RootState) => s.tasks.categories as any[]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -102,22 +103,46 @@ export default function HistoryView() {
             </AccordionSummary>
             <AccordionDetails>
               <List dense>
-                {list.map((t) => (
-                  <ListItem
-                    key={t.id}
-                    secondaryAction={
-                      <Chip
-                        label={t.completed ? "Done" : "Pending"}
-                        size="small"
-                      />
-                    }
-                  >
-                    <ListItemText
-                      primary={t.title}
-                      secondary={t.description || null}
-                    />
-                  </ListItem>
-                ))}
+                        {list.map((t) => {
+                          // derive a friendly status
+                          const status = (() => {
+                            if (t.undoneReason) return { label: "Cancelled", color: "warning" };
+                            if (t.completed) return { label: "Completed", color: "success" };
+                            if (t.dependsOn) {
+                              const locked = !!(t.availableAt && new Date(t.availableAt) > new Date());
+                              return { label: locked ? "Locked" : "Dependent (available)", color: locked ? "default" : "info" };
+                            }
+                            return { label: "Pending", color: "default" };
+                          })();
+
+                          const parts: string[] = [];
+                          if (t.description) parts.push(t.description);
+                          if (t.undoneReason) parts.push(`Reason: ${t.undoneReason}`);
+                          if (t.completedTime) parts.push(`Completed at ${t.completedTime}`);
+                          if (t.category) {
+                            const c = (categories || []).find((x) => x.id === t.category);
+                            const cname = c ? c.name : t.category;
+                            parts.push(`Category: ${cname}`);
+                          }
+
+                          return (
+                            <ListItem
+                              key={t.id}
+                              secondaryAction={
+                                <Chip
+                                  label={status.label}
+                                  size="small"
+                                  color={status.color as any}
+                                />
+                              }
+                            >
+                              <ListItemText
+                                primary={t.title}
+                                secondary={parts.length > 0 ? parts.join(" — ") : null}
+                              />
+                            </ListItem>
+                          );
+                        })}
               </List>
             </AccordionDetails>
           </Accordion>

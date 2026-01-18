@@ -50,6 +50,9 @@ const tasksSlice = createSlice({
       }
       if (Array.isArray(payload)) {
         state.items = payload;
+        // normalize missing category to Personal
+        const personalId = state.categories.find((c) => c.name.toLowerCase() === "personal")?.id || state.categories[1]?.id;
+        state.items = state.items.map((t: Task) => ({ ...(t as any), category: (t as any).category ?? personalId }));
         return;
       }
       if (Array.isArray(payload.items)) {
@@ -58,11 +61,16 @@ const tasksSlice = createSlice({
         if (payload.templates) state.templates = payload.templates;
         if (payload.analytics) state.analytics = payload.analytics;
         if (payload.settings) state.settings = payload.settings;
+        // normalize missing category to Personal (use updated categories if provided)
+        const personalId = state.categories.find((c) => c.name.toLowerCase() === "personal")?.id || state.categories[1]?.id;
+        state.items = state.items.map((t: Task) => ({ ...(t as any), category: (t as any).category ?? personalId }));
         return;
       }
       // fallback: treat as object map and use values
       try {
         state.items = Object.values(payload) as Task[];
+        const personalId = state.categories.find((c) => c.name.toLowerCase() === "personal")?.id || state.categories[1]?.id;
+        state.items = state.items.map((t: Task) => ({ ...(t as any), category: (t as any).category ?? personalId }));
       } catch (e) {
         state.items = [];
       }
@@ -99,7 +107,10 @@ const tasksSlice = createSlice({
             backlog: !!payload.backlog,
             date: payload.date,
             createdAt: new Date().toISOString(),
-            category: payload.category,
+            category:
+              payload.category ??
+              (initialState.categories.find((c) => c.name.toLowerCase() === "personal")?.id ||
+                initialState.categories[1].id),
             priority: payload.priority || "medium",
             tags: payload.tags || [],
             recurring: payload.recurring,
@@ -458,6 +469,34 @@ const tasksSlice = createSlice({
         if (t) t.date = action.payload.date;
       });
     },
+    // set orders for multiple tasks (for reordering)
+    setOrders(state, action: PayloadAction<{ id: string; order?: number }[]>) {
+      for (const o of action.payload) {
+        const t = state.items.find((x) => x.id === o.id);
+        if (t) t.order = o.order;
+      }
+    },
+    // mark task undone/cancelled with a reason and adjust analytics for today
+    markUndoneWithReason(state, action: PayloadAction<{ id: string; reason?: string }>) {
+      const { id, reason } = action.payload;
+      const t = state.items.find((x) => x.id === id);
+      if (!t) return;
+      // if it was completed, decrement today's analytics
+      if (t.completed) {
+        const today = new Date().toISOString().split("T")[0];
+        const rec = state.analytics.completionHistory.find((r) => r.date === today);
+        if (rec && rec.completed > 0) {
+          rec.completed = Math.max(0, rec.completed - 1);
+          if (t.category && rec.categories && rec.categories[t.category]) {
+            rec.categories[t.category] = Math.max(0, rec.categories[t.category] - 1);
+          }
+          // increment undone counter
+          rec.undone = (rec.undone || 0) + 1;
+        }
+      }
+      t.completed = false;
+      t.undoneReason = reason;
+    },
     // Pomodoro tracking
     incrementPomodoro(
       state,
@@ -642,6 +681,8 @@ export const {
   updateSettings,
   recordCompletion,
   processRecurring,
+  setOrders,
+  markUndoneWithReason,
 } = tasksSlice.actions;
 
 export default tasksSlice.reducer;

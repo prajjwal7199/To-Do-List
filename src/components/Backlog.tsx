@@ -84,16 +84,6 @@ export default function Backlog() {
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 1, color: "text.primary" }}>
-        Backlog
-      </Typography>
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ display: "block", mb: 1 }}
-      >
-        Long-term tasks. Use "+" to schedule them into any date later.
-      </Typography>
 
       <Box sx={{ display: "flex", gap: 1, mb: 1, alignItems: "center" }}>
         <TextField
